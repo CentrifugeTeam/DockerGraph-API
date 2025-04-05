@@ -1,9 +1,21 @@
 from fastapi import APIRouter, WebSocket
-from sqlalchemy.orm import joinedload
-from sqlmodel import select
+from pydantic import field_validator
+from sqlalchemy import text
 
-from ..db import Container
 from ..deps import RedisSession, Session
+from .containers import ContainerRead
+
+
+class Graph(ContainerRead):
+    edges: list[int] | None
+
+    @field_validator("edges", mode='before')
+    @classmethod
+    def validate_edges(cls, v: str | None):
+        if v is None:
+            return v
+        return list(map(int, v.split(',')))
+
 
 r = APIRouter(prefix="/graph")
 
@@ -19,18 +31,14 @@ async def graph(ws: WebSocket, redis: RedisSession):
         await ws.send_json(payload)
 
 
-# @r.get('', response_model=list[Graph])
+@r.get('', response_model=list[Graph])
 async def graph(session: Session):
-    # TODO
-    sql = """WITH RECURSIVE graph AS (
-        SELECT * FROM containers
-        
-        UNION ALL
-        
-        SELECT * FROM container_links
-        
-            
-    )
-    
-    """
-    return (await session.exec(select(Container).options(joinedload(Container.containers)))).unique().all()
+    sql = text("""SELECT  *,
+    (
+        SELECT STRING_AGG(CAST(cn2.container_id AS VARCHAR), ',')
+        FROM container_network cn1
+        JOIN container_network cn2 ON cn1.network_id = cn2.network_id
+        WHERE cn1.container_id = c.id AND cn2.container_id != c.id
+    ) AS edges
+FROM containers c""")
+    return (await session.execute(sql)).mappings()
