@@ -23,7 +23,7 @@ r = APIRouter(prefix="/graph")
 @r.websocket("/stream")
 async def graph(ws: WebSocket, redis: RedisSession):
     await ws.accept()
-    last_id = 0
+    last_id = '$'
     while True:
         response = await redis.xread({"graph": last_id}, count=1, block=0)
         _, messages = response[0]
