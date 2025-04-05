@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="allow")
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    AUTH_TOKEN: str
 
 
 settings = Settings()

@@ -14,7 +14,6 @@ services:
     ports:
       - "6379:6379"
       - "8001:8001"
-    container_name: redis
     volumes:
       - redis_volume:/data
 
