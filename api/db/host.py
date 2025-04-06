@@ -7,11 +7,14 @@ from sqlmodel import Field, Relationship, SQLModel
 from .mixins import IDMixin
 
 
+
+
 class Host(IDMixin, SQLModel, table=True):
     __tablename__ = "hosts"
     hostname: str
     ip: str
     agent_id: UUID = Field(default_factory=uuid4)
+    token: str
     containers: list['Container'] = Relationship(back_populates="host")
 
 
@@ -25,6 +28,7 @@ class ContainerNetwork(SQLModel, table=True):
 class Network(IDMixin, SQLModel, table=True):
     __tablename__ = "networks"
     name: str
+    network_id: str
     containers: list['Container'] = Relationship(
         back_populates='networks', link_model=ContainerNetwork)
 

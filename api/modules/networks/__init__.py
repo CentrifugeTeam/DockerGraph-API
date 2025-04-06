@@ -1,11 +1,9 @@
-
-from fastapi import APIRouter
-
+from ...auth import AuthAPIRouter
 from ...db import Network
 from ...deps import Session
 from .scheme import NetworkCreate, NetworkRead
 
-r = APIRouter(prefix='/networks')
+r = AuthAPIRouter(prefix='/networks')
 
 
 @r.post('', response_model=list[NetworkRead])

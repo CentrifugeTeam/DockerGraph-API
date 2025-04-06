@@ -1,13 +1,14 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import HTTPException, status
 from pydantic import BaseModel
 
+from ..auth import AuthAPIRouter
 from ..db import Container, Host, Network
-from .networks.scheme import NetworkRead
 from ..deps import Session
+from .networks.scheme import NetworkCreate
 
-r = APIRouter(prefix='/containers')
+r = AuthAPIRouter(prefix='/containers')
 
 
 class ContainerBase(BaseModel):
@@ -28,9 +29,12 @@ class ContainerRead(ContainerBase):
     id: int
 
 
+class ContainerBatchCreate(ContainerBase):
+    network_ids: list[str]
+
 class ContainersBatchCreate(BaseModel):
-    networks: list[NetworkRead]
-    containers: list[ContainerCreate]
+    networks: list[NetworkCreate]
+    containers: list[ContainerBatchCreate]
 
 
 @r.post('/batch', status_code=status.HTTP_204_NO_CONTENT, responses={
@@ -39,8 +43,8 @@ async def batch_create(batch: ContainersBatchCreate, session: Session):
     """Route был сделан как helper для создания нескольких контейнеров с сетями одновременно, нужно записать произвольные значения network.id чтобы сделать ссылку в объекте контейнера на сеть главное чтобы он не повторялся  , в запросе этот network.id меняется."""
     network_lookup = {}
     for network in batch.networks:
-        network_db = Network(name=network.name)
-        network_lookup[network.id] = network_db
+        network_db = Network(name=network.name, network_id=network.network_id)
+        network_lookup[network.network_id] = network_db
 
     for container in batch.containers:
         host = await session.get(Host, container.host_id)
