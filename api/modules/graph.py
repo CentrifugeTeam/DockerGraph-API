@@ -1,20 +1,20 @@
 from fastapi import APIRouter, WebSocket
-from pydantic import field_validator
-from sqlalchemy import text
+from pydantic import BaseModel
+from sqlmodel import select
 
+from ..db import Container, ContainerNetwork
 from ..deps import RedisSession, Session
 from .containers import ContainerRead
 
 
-class Graph(ContainerRead):
-    edges: list[int] | None
+class GraphLink(BaseModel):
+    source_id: int
+    target_ids: list[int]
 
-    @field_validator("edges", mode='before')
-    @classmethod
-    def validate_edges(cls, v: str | None):
-        if v is None:
-            return v
-        return list(map(int, v.split(',')))
+
+class Graph(BaseModel):
+    nodes: list[ContainerRead]
+    links: list[GraphLink]
 
 
 r = APIRouter(prefix="/graph")
@@ -31,14 +31,18 @@ async def graph(ws: WebSocket, redis: RedisSession):
         await ws.send_json(payload)
 
 
-@r.get('', response_model=list[Graph])
+@r.get('', response_model=Graph)
 async def graph(session: Session):
-    sql = text("""SELECT  *,
-    (
-        SELECT STRING_AGG(CAST(cn2.container_id AS VARCHAR), ',')
-        FROM container_network cn1
-        JOIN container_network cn2 ON cn1.network_id = cn2.network_id
-        WHERE cn1.container_id = c.id AND cn2.container_id != c.id
-    ) AS edges
-FROM containers c""")
-    return (await session.execute(sql)).mappings()
+    containers = await session.exec(select(Container))
+    container_networks = await session.exec(select(ContainerNetwork))
+    links = {}
+    for network in container_networks:
+        if network.network_id not in links:
+            links[network.network_id] = [network.container_id]
+        else:
+            links[network.network_id].append(network.container_id)
+
+    links = [{"source_id": value[0], "target_ids": value[1:]}
+             for _, value in links.items()]
+
+    return {'nodes': containers, 'links': links}

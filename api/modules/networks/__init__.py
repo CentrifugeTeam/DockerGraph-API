@@ -11,7 +11,7 @@ async def networks(networks: list[NetworkCreate], session: Session):
     """Добавление Docker Networks"""
     response = []
     for network in networks:
-        network_db = Network(name=network.name)
+        network_db = Network(**network.model_dump())
         session.add(network_db)
         response.append(network_db)
 
