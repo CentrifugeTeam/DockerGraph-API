@@ -9,6 +9,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
 
+    ports:
+      - "5432:5432"
+
   redis:
     image: redis/redis-stack:latest
     ports:
