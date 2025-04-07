@@ -21,7 +21,7 @@ class ContainerBase(BaseModel):
     status: str
     ip: str
     created_at: datetime
-    last_active: datetime
+    last_active: datetime | None
 
 
 class ContainerCreate(ContainerBase):
