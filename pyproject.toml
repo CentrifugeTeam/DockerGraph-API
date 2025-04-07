@@ -29,7 +29,9 @@ dependencies = [
 
 
 [dependency-groups]
-dev = []
+dev = [
+    "ipython>=9.1.0",
+]
 
 
 

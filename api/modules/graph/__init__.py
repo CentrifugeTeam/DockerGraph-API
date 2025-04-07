@@ -1,10 +1,12 @@
 from fastapi import APIRouter, WebSocket
 from pydantic import BaseModel
 from sqlmodel import select
+from sqlalchemy.orm import joinedload
 from functools import reduce
 from ...db import Container, ContainerNetwork
 from ...deps import RedisSession, Session
-from ..containers import ContainerRead
+from ..containers import ContainerRead, ContainerBase
+from ..hosts.scheme import HostRead
 from .manager import graph_manager
 
 
@@ -13,9 +15,15 @@ class GraphLink(BaseModel):
     target_ids: list[int]
 
 
+class ContainerHostRead(ContainerBase):
+    id: int
+    host: HostRead
+
 class Graph(BaseModel):
-    nodes: list[ContainerRead]
+    nodes: list[ContainerHostRead]
     links: list[GraphLink]
+
+
 
 
 r = APIRouter(prefix="/graph")
@@ -34,7 +42,7 @@ async def graph(ws: WebSocket, redis: RedisSession):
 
 @r.get('', response_model=Graph)
 async def graph(session: Session):
-    containers, links = await graph_manager.get_graph(session)
+    containers, links = await graph_manager.get_graph(session, options=[joinedload(Container.host)])
     links = [{"source_id": value[0], "target_ids": value[1:]}
              for _, value in links.items()]
     return {'nodes': containers, 'links': links}

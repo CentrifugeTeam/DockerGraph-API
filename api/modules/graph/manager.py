@@ -6,8 +6,8 @@ from ...deps import Session
 
 class GraphManager:
 
-    async def get_graph(self, session: Session):
-        nodes = await session.exec(select(Container))
+    async def get_graph(self, session: Session, options=()):
+        nodes = await session.exec(select(Container).options(*options))
         container_networks = await session.exec(select(ContainerNetwork))
         links = {}
         for network in container_networks:
