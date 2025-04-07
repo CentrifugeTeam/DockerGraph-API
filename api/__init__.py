@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .modules import auth, containers, graph, hosts, networks
+from .modules import auth, containers, export, graph, hosts, networks
 
 app = FastAPI()
 
@@ -18,4 +18,4 @@ app.include_router(containers.r)
 app.include_router(auth.r)
 app.include_router(networks.r)
 app.include_router(hosts.r)
-1
+app.include_router(export.r)
