@@ -8,3 +8,7 @@ class NetworkCreate(BaseModel):
 
 class NetworkRead(NetworkCreate):
     id: int
+
+
+class OverlayNetworkCreate(NetworkCreate):
+    peers: list[str]

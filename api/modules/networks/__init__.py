@@ -1,12 +1,13 @@
 from contextlib import suppress
 
+from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlmodel import select
 
 from ...auth import AuthAPIRouter
-from ...db import Network, NetworkHost
+from ...db import Cluster, ClusterHost, Host, Network
 from ...deps import Agent, Session
-from .scheme import NetworkCreate, NetworkRead
+from .scheme import NetworkCreate, NetworkRead, OverlayNetworkCreate
 
 r = AuthAPIRouter(prefix="/networks")
 
@@ -19,20 +20,61 @@ async def networks(networks: list[NetworkCreate], session: Session, agent: Agent
         stmt = (
             select(Network)
             .where(Network.network_id == network.network_id)
+            .where(Network.host_id == agent.id)
         )
-        result = (await session.exec(stmt)).all()
-        if result:
-            network_db = result[0]
-        if not result:
+        network_db = (await session.exec(stmt)).one_or_none()
+        if not network_db:
             network_db = Network(**network.model_dump())
-            network_db.hosts.append(agent)
+            network_db.host = agent
             session.add(network_db)
-        else:
-            query = await session.exec(select(NetworkHost).where(NetworkHost.network_id == network_db.id, NetworkHost.host_id == agent.id))
-            if not query.one_or_none():
-                session.add(NetworkHost(network_id=network_db.id, host_id=agent.id))
 
         response.append(network_db)
 
     await session.commit()
     return response
+
+
+@r.post("/overlay", response_model=NetworkRead, responses={
+    400: {"description": "At least 1 peers required"}
+})
+async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent):
+    """Добавление Docker Overlay Network"""
+    if len(overlay.peers) < 1:
+        raise HTTPException(
+            status_code=400, detail="At least 1 peers required")
+        
+    available_peers = set(overlay.peers) - {agent.ip}
+    if len(available_peers) == 0:
+        raise HTTPException(
+            status_code=400, detail="At least 1 peers required without this host")
+        
+    stmt = (
+        select(Network)
+        .where(Network.network_id == overlay.network_id)
+        .where(Network.host_id == agent.id)
+    )
+    network_db = (await session.exec(stmt)).one_or_none()
+    if not network_db:
+
+        # Maybe NAT can brake this logic because ip can repeat on different hosts
+        hosts = []
+        for peer in available_peers:
+            host = (await session.exec(select(Host).where(Host.ip == peer))).one_or_none()
+            if not host:
+                continue
+            hosts.append(host)
+
+        if len(hosts) >= 1:
+            cluster =  (await session.exec(select(ClusterHost).where(ClusterHost.host_id == hosts[0].id))).one_or_none()
+            if not cluster:
+                cluster = Cluster(name='Centrifuge')
+                cluster.hosts.extend(hosts)
+                session.add(cluster)
+            cluster.hosts.append(agent)
+
+        network_db = Network(**overlay.model_dump(exclude={'peers'}))
+        network_db.host = agent
+        session.add(network_db)
+
+    await session.commit()
+    return network_db

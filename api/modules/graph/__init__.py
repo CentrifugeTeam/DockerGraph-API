@@ -1,32 +1,52 @@
+from functools import reduce
+
 from fastapi import APIRouter, WebSocket
 from pydantic import BaseModel
-from sqlmodel import select
 from sqlalchemy.orm import joinedload
-from functools import reduce
-from ...db import Container, ContainerNetwork
+from sqlmodel import select
+
+from ...db import Cluster, ClusterHost, Container, Host, Network
 from ...deps import RedisSession, Session
-from ..containers import ContainerRead, ContainerBase
+from ..containers import ContainerBase, ContainerReadV2
 from ..hosts.scheme import HostRead
+from ..networks import NetworkRead
 from .manager import graph_manager
 
 
-class GraphLink(BaseModel):
+class NetworkLink(BaseModel):
     source_id: int
-    target_ids: list[int]
+    target_ids: int
 
 
-class ContainerHostRead(ContainerBase):
-    id: int
-    host: HostRead
+class GraphNetworkRead(NetworkRead):
+    containers: list[ContainerReadV2]
+
+
+class GraphInnerHostRead(HostRead):
+    networks: list[GraphNetworkRead]
+
+
+class GraphHostRead(HostRead):
+    networks: list[GraphNetworkRead]
+    hosts: list[GraphInnerHostRead] = None
+
 
 class Graph(BaseModel):
-    nodes: list[ContainerHostRead]
-    links: list[GraphLink]
-
-
+    hosts: list[GraphHostRead]
+    network_links: list[NetworkLink]
 
 
 r = APIRouter(prefix="/graph")
+
+
+class Proxy:
+
+    def __init__(self, proxied, hosts):
+        self.proxied = proxied
+        self.hosts = hosts
+
+    def __getattr__(self, name):
+        return getattr(self.proxied, name)
 
 
 @r.websocket("/stream")
@@ -42,7 +62,14 @@ async def graph(ws: WebSocket, redis: RedisSession):
 
 @r.get('', response_model=Graph)
 async def graph(session: Session):
-    containers, links = await graph_manager.get_graph(session, options=[joinedload(Container.host)])
-    links = [{"source_id": value[0], "target_ids": value[1:]}
-             for _, value in links.items()]
-    return {'nodes': containers, 'links': links}
+    clusters = (await session.exec(select(Cluster).options(joinedload(Cluster.hosts).subqueryload(Host.networks).subqueryload(Network.containers)))).unique()
+    hosts = []
+    hosts_ids = []
+    for cluster in clusters:
+        for host in cluster.hosts:
+            hosts_ids.append(host.id)
+        hosts.append(Proxy(cluster.hosts[0], cluster.hosts[1:]))
+
+    solo_hosts = (await session.exec(select(Host).where(Host.id.not_in(hosts_ids)).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique().all()
+    hosts.extend(solo_hosts)
+    return {'hosts': hosts, 'network_links': []}
