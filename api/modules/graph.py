@@ -31,6 +31,8 @@ async def graph(ws: WebSocket, redis: RedisSession):
         await ws.send_json(payload)
 
 
+def recursive_parse_graph(links: list[set[int]]):
+    pass
 @r.get('', response_model=Graph)
 async def graph(session: Session):
     containers = await session.exec(select(Container))
@@ -38,17 +40,9 @@ async def graph(session: Session):
     links = {}
     for network in container_networks:
         if network.network_id not in links:
-            links[network.network_id] = {network.container_id}
+            links[network.network_id] = [network.container_id]
         else:
-            links[network.network_id].add(network.container_id)
-    res_links = []
-    for link in links:
-        outputs = set()
-        reduce(lambda x, y: x.union(y), links[link], outputs)
-        for link2 in links:
-            outputs = outputs.union(link2)
-        outputs = list(outputs)
-        source_id, target_ids = outputs[0], outputs[1:]
-        res_links.append({"source_id": source_id, "target_ids": target_ids})
-        
-    return {'nodes': containers, 'links': res_links}
+            links[network.network_id].append(network.container_id)
+    links = [{"source_id": value[0], "target_ids": value[1:]}
+             for _, value in links.items()]
+    return {'nodes': containers, 'links': links}
