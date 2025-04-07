@@ -1,14 +1,17 @@
 from datetime import datetime
+from uuid import UUID
 
 from fastapi import HTTPException, status
+from fastapi_sqlalchemy_toolkit import ModelManager, make_partial_model
 from pydantic import BaseModel
 
 from ..auth import AuthAPIRouter
-from ..db import Container, Host, Network
-from ..deps import Session, Agent
-from .networks.scheme import NetworkCreate
+from ..db import Container, Network
+from ..deps import Agent, Session
+from .networks.scheme import NetworkCreate, NetworkRead
 
 r = AuthAPIRouter(prefix='/containers')
+manager = ModelManager(Container)
 
 
 class ContainerBase(BaseModel):
@@ -18,28 +21,40 @@ class ContainerBase(BaseModel):
     status: str
     ip: str
     created_at: datetime
+    last_active: datetime
 
 
 class ContainerCreate(ContainerBase):
     network_ids: list[int]
 
 
+ContainerUpdate = make_partial_model(ContainerBase)
+
+
 class ContainerRead(ContainerBase):
     id: int
+    host_id: UUID
 
 
 class ContainerBatchCreate(ContainerBase):
     network_ids: list[str]
+
 
 class ContainersBatchCreate(BaseModel):
     networks: list[NetworkCreate]
     containers: list[ContainerBatchCreate]
 
 
-@r.post('/batch', status_code=status.HTTP_204_NO_CONTENT, responses={
+class ContainersBatchRead(BaseModel):
+    networks: list[NetworkRead]
+    containers: list[ContainerRead]
+
+
+@r.post('/batch', response_model=ContainersBatchRead, responses={
     404: {'detail': 'Object not found', "content": {"application/json": {"example": {'detail': 'Host Not Found'}}}}})
 async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Agent):
     """Route был сделан как helper для создания нескольких контейнеров с сетями одновременно, нужно записать произвольные значения network.id чтобы сделать ссылку в объекте контейнера на сеть главное чтобы он не повторялся  , в запросе этот network.id меняется."""
+    containers = []
     network_lookup = {}
     for network in batch.networks:
         network_db = Network(name=network.name, network_id=network.network_id)
@@ -56,9 +71,10 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
             container_db.networks.append(network_db)
 
         session.add(container_db)
+        containers.append(container_db)
     await session.commit()
 
-    return
+    return {'networks': list(network_lookup.values()), 'containers': containers}
 
 
 @r.post('', status_code=status.HTTP_204_NO_CONTENT, responses={
@@ -81,3 +97,10 @@ async def containers(containers: list[ContainerCreate], session: Session, agent:
     await session.commit()
 
     return
+
+
+@r.patch('/{id}')
+async def container(id: int, container: ContainerUpdate, session: Session):
+    """Добавление контейнеров на основе сети и хоста"""
+    container_db = await manager.get_or_404(session, id=id)
+    return await manager.update(session, container_db, container)

@@ -31,8 +31,6 @@ async def graph(ws: WebSocket, redis: RedisSession):
         await ws.send_json(payload)
 
 
-def recursive_parse_graph(links: list[set[int]]):
-    pass
 @r.get('', response_model=Graph)
 async def graph(session: Session):
     containers = await session.exec(select(Container))

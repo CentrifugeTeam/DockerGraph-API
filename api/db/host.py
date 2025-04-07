@@ -52,6 +52,8 @@ class Container(IDMixin, SQLModel, table=True):
         default_factory=lambda: datetime.now(tz=timezone.utc), sa_column=Column(DateTime(timezone=True), nullable=False))
     ip: str
     host_id: UUID = Field(foreign_key="hosts.id")
+    last_active: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc), sa_column=Column(DateTime(timezone=True), nullable=True))
     host: Host = Relationship(back_populates="containers")
     networks: list[Network] = Relationship(
         back_populates="containers", link_model=ContainerNetwork)
