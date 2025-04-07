@@ -2,9 +2,10 @@ from fastapi import APIRouter, WebSocket
 from pydantic import BaseModel
 from sqlmodel import select
 from functools import reduce
-from ..db import Container, ContainerNetwork
-from ..deps import RedisSession, Session
-from .containers import ContainerRead
+from ...db import Container, ContainerNetwork
+from ...deps import RedisSession, Session
+from ..containers import ContainerRead
+from .manager import graph_manager
 
 
 class GraphLink(BaseModel):
@@ -33,14 +34,7 @@ async def graph(ws: WebSocket, redis: RedisSession):
 
 @r.get('', response_model=Graph)
 async def graph(session: Session):
-    containers = await session.exec(select(Container))
-    container_networks = await session.exec(select(ContainerNetwork))
-    links = {}
-    for network in container_networks:
-        if network.network_id not in links:
-            links[network.network_id] = [network.container_id]
-        else:
-            links[network.network_id].append(network.container_id)
+    containers, links = await graph_manager.get_graph(session)
     links = [{"source_id": value[0], "target_ids": value[1:]}
              for _, value in links.items()]
     return {'nodes': containers, 'links': links}

@@ -1,0 +1,22 @@
+from sqlmodel import select
+
+from ...db import Container, ContainerNetwork
+from ...deps import Session
+
+
+class GraphManager:
+
+    async def get_graph(self, session: Session):
+        nodes = await session.exec(select(Container))
+        container_networks = await session.exec(select(ContainerNetwork))
+        links = {}
+        for network in container_networks:
+            if network.network_id not in links:
+                links[network.network_id] = [network.container_id]
+            else:
+                links[network.network_id].append(network.container_id)
+        return nodes, links
+
+
+
+graph_manager = GraphManager()

@@ -56,6 +56,7 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
     """Route был сделан как helper для создания нескольких контейнеров с сетями одновременно, нужно записать произвольные значения network.id чтобы сделать ссылку в объекте контейнера на сеть главное чтобы он не повторялся  , в запросе этот network.id меняется."""
     containers = []
     network_lookup = {}
+    networks = []
     for network in batch.networks:
         network_db = Network(name=network.name, network_id=network.network_id)
         network_db.hosts.append(agent)
@@ -69,12 +70,13 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
         for network_id in container.network_ids:
             network_db = network_lookup[network_id]
             container_db.networks.append(network_db)
+            networks.append(network_db)
 
         session.add(container_db)
         containers.append(container_db)
     await session.commit()
 
-    return {'networks': list(network_lookup.values()), 'containers': containers}
+    return {'networks': networks, 'containers': containers}
 
 
 @r.post('', status_code=status.HTTP_204_NO_CONTENT, responses={
