@@ -17,8 +17,10 @@ async def plantuml(session: Session):
     buffer.write("@startmindmap\ntitle Docker Network\n")
     hashmap = {node.id: node for node in nodes}
     for link in links.values():
-        for i, l in enumerate(link):
-            buffer.write(f"{(i+1) * '*'} {hashmap[l].name}\n")
+        l = link[0]
+        buffer.write(f"* {hashmap[l].name}\n")
+        for i, l in enumerate(link[1:]):
+            buffer.write(f"** {hashmap[l].name}\n")
     buffer.write("@endmindmap\n")
     buffer.seek(0)
 

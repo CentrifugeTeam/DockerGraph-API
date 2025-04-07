@@ -34,8 +34,6 @@ ContainerUpdate = make_partial_model(ContainerBase)
 class ContainerRead(ContainerBase):
     id: int
     host_id: UUID
-    
-    
 
 
 
