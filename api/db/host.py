@@ -7,15 +7,21 @@ from sqlmodel import Field, Relationship, SQLModel
 from .mixins import IDMixin
 
 
+class NetworkHost(SQLModel, table=True):
+    __tablename__ = 'network_hosts'
+    network_id: int = Field(foreign_key="networks.id", primary_key=True)
+    host_id: UUID = Field(foreign_key="hosts.id", primary_key=True)
 
 
-class Host(IDMixin, SQLModel, table=True):
+class Host(SQLModel, table=True):
     __tablename__ = "hosts"
     hostname: str
     ip: str
-    agent_id: UUID = Field(default_factory=uuid4)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     token: str
     containers: list['Container'] = Relationship(back_populates="host")
+    networks: list['Network'] = Relationship(
+        back_populates='hosts', link_model=NetworkHost)
 
 
 class ContainerNetwork(SQLModel, table=True):
@@ -32,6 +38,9 @@ class Network(IDMixin, SQLModel, table=True):
     containers: list['Container'] = Relationship(
         back_populates='networks', link_model=ContainerNetwork)
 
+    hosts: list['Host'] = Relationship(
+        back_populates='networks', link_model=NetworkHost)
+
 
 class Container(IDMixin, SQLModel, table=True):
     __tablename__ = "containers"
@@ -41,8 +50,8 @@ class Container(IDMixin, SQLModel, table=True):
     status: str
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc), sa_column=Column(DateTime(timezone=True), nullable=False))
-    host_id: int = Field(foreign_key="hosts.id")
     ip: str
+    host_id: UUID = Field(foreign_key="hosts.id")
     host: Host = Relationship(back_populates="containers")
     networks: list[Network] = Relationship(
         back_populates="containers", link_model=ContainerNetwork)

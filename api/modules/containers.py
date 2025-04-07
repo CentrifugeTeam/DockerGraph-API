@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from ..auth import AuthAPIRouter
 from ..db import Container, Host, Network
-from ..deps import Session
+from ..deps import Session, Agent
 from .networks.scheme import NetworkCreate
 
 r = AuthAPIRouter(prefix='/containers')
@@ -16,7 +16,6 @@ class ContainerBase(BaseModel):
     image: str
     container_id: str
     status: str
-    host_id: int
     ip: str
     created_at: datetime
 
@@ -39,20 +38,18 @@ class ContainersBatchCreate(BaseModel):
 
 @r.post('/batch', status_code=status.HTTP_204_NO_CONTENT, responses={
     404: {'detail': 'Object not found', "content": {"application/json": {"example": {'detail': 'Host Not Found'}}}}})
-async def batch_create(batch: ContainersBatchCreate, session: Session):
+async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Agent):
     """Route был сделан как helper для создания нескольких контейнеров с сетями одновременно, нужно записать произвольные значения network.id чтобы сделать ссылку в объекте контейнера на сеть главное чтобы он не повторялся  , в запросе этот network.id меняется."""
     network_lookup = {}
     for network in batch.networks:
         network_db = Network(name=network.name, network_id=network.network_id)
+        network_db.hosts.append(agent)
         network_lookup[network.network_id] = network_db
 
     for container in batch.containers:
-        host = await session.get(Host, container.host_id)
-        if not host:
-            raise HTTPException(status_code=404, detail='Host not found')
         container_db = Container(
-            **container.model_dump(exclude={'network_ids', 'host_id'}))
-        container_db.host = host
+            **container.model_dump(exclude={'network_ids'}))
+        container_db.host = agent
 
         for network_id in container.network_ids:
             network_db = network_lookup[network_id]
@@ -67,15 +64,12 @@ async def batch_create(batch: ContainersBatchCreate, session: Session):
 @r.post('', status_code=status.HTTP_204_NO_CONTENT, responses={
     404: {'detail': 'Object not found', "content": {"application/json": {"example": {'detail': 'Host Not Found'}}}}
 })
-async def containers(containers: list[ContainerCreate], session: Session):
+async def containers(containers: list[ContainerCreate], session: Session, agent: Agent):
     """Добавление контейнеров на основе сети и хоста"""
     for container in containers:
-        host = await session.get(Host, container.host_id)
-        if not host:
-            raise HTTPException(status_code=404, detail='Host not found')
         container_db = Container(
-            **container.model_dump(exclude={'network_ids', 'host_id'}))
-        container_db.host = host
+            **container.model_dump(exclude={'network_ids'}))
+        container_db.host = agent
 
         for network_id in container.network_ids:
             network_db = await session.get(Network, network_id)
