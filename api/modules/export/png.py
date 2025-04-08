@@ -20,13 +20,11 @@ async def png(session: Session):
         graph.add_node(node)
         for net in node.networks:
             graph.subgraph()
-        
     graph.add_nodes_from(
         [node.hostname for node in nodes])
     graph.add_edges_from(
         [(edge.source_host_id, edge.target_host_id) for edge in edges])
     nx.draw(graph)
-    
 
     # Create a bytes buffer to store the image
     buf = BytesIO()
