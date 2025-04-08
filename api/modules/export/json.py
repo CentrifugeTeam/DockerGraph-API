@@ -1,3 +1,4 @@
+import json
 from io import StringIO
 
 import networkx as nx
@@ -11,16 +12,11 @@ from ..graph.manager import graph_manager
 r = APIRouter(prefix='/json')
 
 
-def create_mindmap_from_networks(networks: list['Network'], data: dict):
-    data['networks'] = []
+def create_mindmap_from_networks(networks: list['Network']):
+    data = []
     for network in networks:
-        containers = [network.model_dump(exclude={'containers'}) for network in network.containers]
-        data['networks'].append(network.model_dump(exclude={''}))
-        
-        
-        # buffer.write(f"{start} Network: {network.name}\n")
-        # for container in network.containers:
-        #     buffer.write(f"{container_start} Container: {container.name}\n")
+        data.append(network.model_dump(exclude={'host_id'}))
+    return data
 
 
 @r.get('', response_class=StreamingResponse)
@@ -43,21 +39,24 @@ async def plantuml(session: Session):
         for neighbor in graph.neighbors(node):
             if neighbor in visited:
                 continue
-            neighbors.append({'name': graph.nodes[neighbor]['name']})
-            create_mindmap_from_networks(
-                graph.nodes[neighbor]['networks'], neighbor)
-            
+            networks = create_mindmap_from_networks(
+                graph.nodes[neighbor]['networks'])
+
+            neighbors.append(
+                {'name': graph.nodes[neighbor]['name'], 'networks': networks})
+
             visited.add(neighbor)
 
-        create_mindmap_from_networks(
-            buffer, graph.nodes[node]['networks'], start='**')
+        networks = create_mindmap_from_networks(
+            graph.nodes[node]['networks'])
+        host['networks'] = networks
         hosts.append(host)
         visited.add(node)
 
-    buffer.write("@endmindmap\n")
+    buffer = StringIO()
+    buffer.write(json.dumps(response))
     buffer.seek(0)
-
-    return StreamingResponse(buffer, media_type="text/plain",
+    return StreamingResponse(buffer, media_type="application/json",
                              headers={
-                                 "Content-Disposition": "attachment; filename=graph.puml",
+                                 "Content-Disposition": "attachment; filename=graph.json",
                                  "Content-Type": "text/plain; charset=utf-8"})

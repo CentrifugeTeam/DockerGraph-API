@@ -19,6 +19,7 @@ class ContainerBase(BaseModel):
     name: str
     image: str
     container_id: str
+    display_name: str | None = None
     status: str
     packets_number: int | None = None
     ip: str
@@ -131,6 +132,8 @@ async def containers(containers: list[ContainerCreate], session: Session, agent:
     await session.commit()
 
     return
+
+
 
 
 @r.patch('/{id}')

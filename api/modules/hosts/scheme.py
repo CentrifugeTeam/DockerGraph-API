@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class HostCreate(BaseModel):
     hostname: str
     ip: str
+    display_name: str | None = None
 
 
 class HostRead(HostCreate):

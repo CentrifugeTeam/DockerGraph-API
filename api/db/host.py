@@ -26,6 +26,7 @@ class Host(SQLModel, table=True):
     hostname: str
     ip: str
     token: str
+    display_name: str | None = None
     networks: list['Network'] = Relationship(
         back_populates='host')
 
@@ -33,6 +34,7 @@ class Host(SQLModel, table=True):
 class Network(IDMixin, SQLModel, table=True):
     __tablename__ = "networks"
     name: str
+    display_name: str | None = None
     network_id: str
     host_id: UUID = Field(foreign_key="hosts.id")
     containers: list['Container'] = Relationship(back_populates='network')
@@ -46,6 +48,7 @@ class Container(IDMixin, SQLModel, table=True):
     model_config = ConfigDict(extra='allow')
     name: str
     container_id: str
+    display_name: str | None = None
     image: str
     status: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(
