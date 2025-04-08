@@ -84,9 +84,10 @@ async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent)
             other_network_id = (await session.exec(select(Network.id).where(Network.name == overlay.name).where(Network.host_id == host.id))).one_or_none()
             if not other_network_id:
                 continue
-            net_to_net = (await session.exec(select(NetworkToNetwork).where(((NetworkToNetwork.source_network_id == network_db.id) & (NetworkToNetwork.target_network_id == other_network_id)) | ((NetworkToNetwork.target_network_id ==  network_db.id) & (NetworkToNetwork.source_network_id ==other_network_id))))).one_or_none()
+            net_to_net = (await session.exec(select(NetworkToNetwork).where(((NetworkToNetwork.source_network_id == network_db.id) & (NetworkToNetwork.target_network_id == other_network_id)) | ((NetworkToNetwork.target_network_id == network_db.id) & (NetworkToNetwork.source_network_id == other_network_id))))).one_or_none()
             if not net_to_net:
-                session.add(NetworkToNetwork(source_network_id=network_db.id, target_network_id=other_network_id))
+                session.add(NetworkToNetwork(
+                    source_network_id=network_db.id, target_network_id=other_network_id))
         await session.commit()
     return network_db
 
@@ -101,6 +102,6 @@ async def container(id: int, network: NetworkUpdate, session: Session):
     return await manager.update(session, obj_db, network)
 
 
-r = APIRouter()
+r = APIRouter(tags=['Networks'])
 r.include_router(pub)
 r.include_router(private)

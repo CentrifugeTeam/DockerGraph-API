@@ -62,4 +62,4 @@ async def plantuml(session: Session, id: UUID | None = None):
     return StreamingResponse(buffer, media_type="application/json",
                              headers={
                                  "Content-Disposition": "attachment; filename=graph.json",
-                                 "Content-Type": "text/plain; charset=utf-8"})
+                                 "Content-Type": "application/json; charset=utf-8"})

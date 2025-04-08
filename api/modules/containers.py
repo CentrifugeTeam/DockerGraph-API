@@ -149,8 +149,9 @@ async def container(id: int, session: Session, redis: RedisSession):
     """Убирание отслеживания контейнера на основе container_id"""
     container = await manager.get_or_404(session, id=id, options=(joinedload(Container.network)))
     await redis.lpush(str(container.network.host_id), container.container_id)
+    await manager.delete(session, container)
 
 
-r = APIRouter()
+r = APIRouter(tags=['Containers'])
 r.include_router(pub)
 r.include_router(private)

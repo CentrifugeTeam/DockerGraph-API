@@ -1,5 +1,3 @@
-import asyncio
-import random
 from datetime import datetime, timedelta, timezone
 from functools import reduce
 from uuid import UUID
@@ -54,7 +52,7 @@ class Graph(BaseModel):
             yield {'source_id': net.source_network_id, 'target_id': net.target_network_id}
 
 
-r = APIRouter(prefix="/graph")
+r = APIRouter(prefix="/graph", tags=["Graph"])
 
 
 class Proxy:
@@ -65,29 +63,6 @@ class Proxy:
 
     def __getattr__(self, name):
         return getattr(self.proxied, name)
-
-
-@r.websocket("/stream")
-async def graph(ws: WebSocket, redis: RedisSession, session: Session):
-    await ws.accept()
-    last_id = '$'
-    # containers = (await session.exec(select(Container).options(joinedload(Container.network, innerjoin=True)))).unique().all()
-
-    while True:
-        # await asyncio.sleep(0.5)
-        # container = random.choice(containers)
-        # mock = []
-        # packets = 0
-        # for i in range(random.randint(1, 10)):
-        # packet = random.randint(10, 100)
-        # mock.append({**random.choice(container).model_dump(
-        # exclude={'last_active', 'created_at', 'packets_number'}), 'packets_number': packet, "traffic": {}})
-        # packets += packet
-
-        response = await redis.xread({"graph": last_id}, count=1, block=0)
-        _, messages = response[0]
-        last_id, payload = messages[0]
-        await ws.send_json(payload)
 
 
 @r.get('', response_model=Graph)
