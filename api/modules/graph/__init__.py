@@ -61,20 +61,23 @@ async def graph(ws: WebSocket, redis: RedisSession, session: Session):
     networks = (await session.exec(select(Network).options(joinedload(Network.containers)))).unique().all()
 
     while True:
-        await asyncio.sleep(0.5)
-        network = random.choice(networks)
-        mock = []
-        packets = 0
-        for i in range(random.randint(1, 10)):
-            packet = random.randint(10, 100)
-            mock.append({**random.choice(network.containers).model_dump(
-                exclude={'last_active', 'created_at', 'packets_number'}), 'packets_number': packet, "traffic": {}})
-            packets += packet
+        try:
+            await asyncio.sleep(0.5)
+            network = random.choice(networks)
+            mock = []
+            packets = 0
+            for i in range(random.randint(1, 10)):
+                packet = random.randint(10, 100)
+                mock.append({**random.choice(network.containers).model_dump(
+                    exclude={'last_active', 'created_at', 'packets_number'}), 'packets_number': packet, "traffic": {}})
+                packets += packet
 
-        # response = await redis.xread({"graph": last_id}, count=1, block=0)
-        # _, messages = response[0]
-        # last_id, payload = messages[0]
-        await ws.send_json({'network': {'id': network.id, 'packets': packets, 'containers': mock}})
+            # response = await redis.xread({"graph": last_id}, count=1, block=0)
+            # _, messages = response[0]
+            # last_id, payload = messages[0]
+            await ws.send_json({'network': {'id': network.id, 'packets': packets, 'containers': mock}})
+        except Exception as e:
+            pass
 
 
 @r.get('', response_model=Graph)
