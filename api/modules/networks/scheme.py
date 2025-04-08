@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from fastapi_sqlalchemy_toolkit import make_partial_model
 
 
 class NetworkCreate(BaseModel):
@@ -13,3 +14,7 @@ class NetworkRead(NetworkCreate):
 
 class OverlayNetworkCreate(NetworkCreate):
     peers: list[str]
+
+
+class NetworkUpdate(BaseModel):
+    display_name: str | None = None

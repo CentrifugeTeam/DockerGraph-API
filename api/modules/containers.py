@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from fastapi_sqlalchemy_toolkit import ModelManager, make_partial_model
 from pydantic import BaseModel
 from sqlmodel import delete, select
@@ -10,9 +10,6 @@ from ..auth import AuthAPIRouter
 from ..db import Container, Network
 from ..deps import Agent, Session
 from .networks.scheme import NetworkCreate, NetworkRead
-
-r = AuthAPIRouter(prefix='/containers')
-manager = ModelManager(Container)
 
 
 class ContainerBase(BaseModel):
@@ -52,6 +49,19 @@ class ContainersBatchCreate(BaseModel):
     containers: list[ContainerBatchCreate]
 
 
+pub = APIRouter(prefix='/containers')
+
+
+@pub.patch('/{id}')
+async def container(id: int, container: ContainerUpdate, session: Session):
+    """Добавление контейнеров на основе сети и хоста"""
+    container_db = await manager.get_or_404(session, id=id)
+    return await manager.update(session, container_db, container)
+
+private = AuthAPIRouter(prefix='/containers')
+manager = ModelManager(Container)
+
+
 class Proxy:
 
     def __init__(self, proxied, host_id):
@@ -70,7 +80,7 @@ class ContainersBatchRead(BaseModel):
     containers: list[ContainerReadV1]
 
 
-@r.post('/batch', response_model=ContainersBatchRead, responses={
+@private.post('/batch', response_model=ContainersBatchRead, responses={
     404: {'detail': 'Object not found', "content": {"application/json": {"example": {'detail': 'Host Not Found'}}}}})
 async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Agent):
     """Route был сделан как helper для создания нескольких контейнеров с сетями одновременно, нужно записать произвольные значения network.id чтобы сделать ссылку в объекте контейнера на сеть главное чтобы он не повторялся  , в запросе этот network.id меняется."""
@@ -111,7 +121,7 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
     return {'networks': networks, 'containers': containers}
 
 
-@r.post('', status_code=status.HTTP_204_NO_CONTENT, responses={
+@private.post('', status_code=status.HTTP_204_NO_CONTENT, responses={
     404: {'detail': 'Object not found', "content": {"application/json": {"example": {'detail': 'Host Not Found'}}}}
 })
 async def containers(containers: list[ContainerCreate], session: Session, agent: Agent):
@@ -134,10 +144,6 @@ async def containers(containers: list[ContainerCreate], session: Session, agent:
     return
 
 
-
-
-@r.patch('/{id}')
-async def container(id: int, container: ContainerUpdate, session: Session):
-    """Добавление контейнеров на основе сети и хоста"""
-    container_db = await manager.get_or_404(session, id=id)
-    return await manager.update(session, container_db, container)
+r = APIRouter()
+r.include_router(pub)
+r.include_router(private)
