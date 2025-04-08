@@ -1,5 +1,6 @@
 import asyncio
 import random
+from datetime import datetime, timedelta, timezone
 from functools import reduce
 from uuid import UUID
 
@@ -90,13 +91,44 @@ async def graph(ws: WebSocket, redis: RedisSession, session: Session):
 
 
 @r.get('', response_model=Graph)
-async def graph(session: Session, host_id: UUID | None = None, is_dead: bool = False):
+async def graph(session: Session, host_id: UUID | None = None, is_dead: bool | None = None):
     if host_id:
-        nodes = (await session.exec(select(Host).where(Host.id == host_id).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
+        stmt = select(Host).where(Host.id == host_id)
+        if is_dead:
+            stmt = stmt.join(Network, Network.host_id == Host.id).join(
+                Container, (Container.network_id == Network.id) & (Container.last_active < datetime.now(tz=timezone.utc) - timedelta(days=1)))
+            nodes = (await session.exec(stmt.options(joinedload(Host.networks).subqueryload(Network.containers)))).unique().all()
+            if nodes:
+                for net in nodes[0].networks:
+                    containers = [container for container in net.containers if container.last_active < datetime.now(
+                        tz=timezone.utc) - timedelta(days=1)]
+                    net.containers = containers
+        else:
+            nodes = (await session.exec(stmt.options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
         links = []
         net_to_net = []
     else:
-        nodes = (await session.exec(select(Host).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
-        links = (await session.exec(select(HostToHost)))
-        net_to_net = await session.exec(select(NetworkToNetwork))
+        if is_dead:
+            stmt = select(Host).join(Network, Network.host_id == Host.id).join(
+                Container, (Container.network_id == Network.id) & (Container.last_active < datetime.now(tz=timezone.utc) - timedelta(days=1)))
+            nodes = (await session.exec(stmt.options(joinedload(Host.networks).subqueryload(Network.containers)))).unique().all()
+            node_ids = []
+            networks_ids = []
+            for host in nodes:
+                node_ids.append(host.id)
+                for net in host.networks:
+                    containers = [container for container in net.containers if container.last_active < datetime.now(
+                        tz=timezone.utc) - timedelta(days=1)]
+                    net.containers = containers
+                    networks_ids.append(net.id)
+            # links = await session.exec(select(HostToHost).where((HostToHost.source_host_id.in_(node_ids)) & (HostToHost.target_host_id.in_(node_ids))))
+            # net_to_net = await session.exec(select(NetworkToNetwork).where(NetworkToNetwork.source_network_id.in_(networks_ids), NetworkToNetwork.target_network_id.in_(networks_ids)))
+            # TODO mock for now
+            links = []
+            net_to_net = []
+
+        else:
+            nodes = (await session.exec(select(Host).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
+            links = (await session.exec(select(HostToHost)))
+            net_to_net = await session.exec(select(NetworkToNetwork))
     return {'nodes': nodes, 'links': links, 'network_to_network': net_to_net}

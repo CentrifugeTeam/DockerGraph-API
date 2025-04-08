@@ -16,8 +16,8 @@ class HostToHost(SQLModel, table=True):
 
 class NetworkToNetwork(SQLModel, table=True):
     __tablename__ = 'network_to_network'
-    source_network_id: int = Field(foreign_key="networks.id", primary_key=True)
-    target_network_id: int = Field(foreign_key="networks.id", primary_key=True)
+    source_network_id: int = Field(foreign_key="networks.id", primary_key=True, ondelete="CASCADE")
+    target_network_id: int = Field(foreign_key="networks.id", primary_key=True, ondelete='CASCADE')
 
 
 class Host(SQLModel, table=True):
