@@ -19,7 +19,8 @@ async def png(session: Session):
     for node in nodes:
         graph.add_node(node)
         for net in node.networks:
-            graph.subgraph()
+            k = graph.subgraph()
+            
     graph.add_nodes_from(
         [node.id for node in nodes])
     graph.add_edges_from(
