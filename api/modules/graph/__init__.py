@@ -1,3 +1,5 @@
+import asyncio
+import random
 from functools import reduce
 from uuid import UUID
 
@@ -9,6 +11,7 @@ from sqlmodel import select
 from ...db import Container, Host, HostToHost, Network
 from ...deps import RedisSession, Session
 from ..containers import ContainerBase, ContainerReadV2
+from ..containers import manager as container_manager
 from ..hosts.scheme import HostRead
 from ..networks import NetworkRead
 from .manager import graph_manager
@@ -52,13 +55,25 @@ class Proxy:
 
 
 @r.websocket("/stream")
-async def graph(ws: WebSocket, redis: RedisSession):
+async def graph(ws: WebSocket, redis: RedisSession, session: Session):
     await ws.accept()
     last_id = '$'
+    # containers = await container_manager.list(session, options=joinedload(Container.network))
     while True:
+        # await asyncio.sleep(0.5)
+        # container1 = random.choice(containers)
+        # container2 = random.choice(containers)
+
         response = await redis.xread({"graph": last_id}, count=1, block=0)
         _, messages = response[0]
         last_id, payload = messages[0]
+        # payload = {
+        #     'id': container1.id,
+        #     'status': container1.status,
+        #     'count_packets': random.randint(10, 100),
+        #     'last_active': container1.last_active,
+
+        # }
         await ws.send_json(payload)
 
 

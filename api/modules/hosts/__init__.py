@@ -31,7 +31,7 @@ async def hosts(session: Session, host_id: UUID | None = None):
 
 
 @r.patch('/{id}', response_model=HostUpdate)
-async def container(id: int, obj: HostUpdate, session: Session):
+async def container(id: UUID, obj: HostUpdate, session: Session):
     """Добавление контейнеров на основе сети и хоста"""
     obj_db = await manager.get_or_404(session, id=id)
     return await manager.update(session, obj_db, obj)
