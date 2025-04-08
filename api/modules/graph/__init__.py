@@ -64,7 +64,6 @@ async def graph(ws: WebSocket, redis: RedisSession):
 
 @r.get('', response_model=Graph)
 async def graph(session: Session):
-
     nodes = (await session.exec(select(Host).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
     links = (await session.exec(select(HostToHost)))
     return {'nodes': nodes, 'links': links}

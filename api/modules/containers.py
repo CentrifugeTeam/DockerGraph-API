@@ -31,8 +31,10 @@ class ContainerCreate(ContainerBase):
 
 ContainerUpdate = make_partial_model(ContainerBase)
 
+
 class ContainerReadV2(ContainerBase):
     id: int
+
 
 class ContainerReadV1(ContainerBase):
     id: int
@@ -84,7 +86,7 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
     for container in batch.containers:
         network_id = container.network_ids[0]  # Mock for now
         network_db = network_lookup[network_id]
-        container_db = (await session.exec(select(Container).join(Network, Network.id == Container.network_id).where(Container.container_id == container.container_id).where(Network.network_id == network_id))).one_or_none()
+        container_db = (await session.exec(select(Container).join(Network, Network.id == Container.network_id).where(Container.container_id == container.container_id).where(Network.network_id == network_id).where(Network.host_id == network_db.host_id))).one_or_none()
         if not container_db:
             container_db = Container(
                 **container.model_dump(exclude={'network_ids'}))
@@ -94,12 +96,12 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
         networks.append(network_db)
         containers.append(Proxy(container_db, network_db.host_id))
     await session.commit()
-
-    stmt = delete(Container).where(Container.id.not_in(
-        [container.id for container in containers]))
-    await session.exec(stmt)
-    stmt = delete(Network).where(Network.id.not_in(
-        [network.id for network in networks]))
+    cons = await session.exec(select(Container).join(Network, Network.id == Container.network_id).where(
+        Container.id.not_in([container.id for container in containers]
+    )).where(Network.host_id == agent.id))
+    for container in cons:
+        await session.delete(container)
+    stmt = delete(Network).where(Network.id.not_in([network.id for network in networks])).where(Network.host_id == agent.id)
     await session.exec(stmt)
     await session.commit()
 
