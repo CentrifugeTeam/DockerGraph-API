@@ -11,9 +11,9 @@ from sqlmodel import select
 from ...db import Container, Host, HostToHost, Network
 from ...deps import RedisSession, Session
 from ..containers import ContainerBase, ContainerReadV2
-from ..containers import manager as container_manager
 from ..hosts.scheme import HostRead
 from ..networks import NetworkRead
+from ..networks import manager as network_manager
 from .manager import graph_manager
 
 
@@ -57,24 +57,24 @@ class Proxy:
 @r.websocket("/stream")
 async def graph(ws: WebSocket, redis: RedisSession, session: Session):
     await ws.accept()
-    last_id = '$'
-    # containers = await container_manager.list(session, options=joinedload(Container.network))
+    # last_id = '$'
+    networks = (await session.exec(select(Network).options(joinedload(Network.containers)))).unique().all()
+
     while True:
-        # await asyncio.sleep(0.5)
-        # container1 = random.choice(containers)
-        # container2 = random.choice(containers)
+        await asyncio.sleep(0.5)
+        network = random.choice(networks)
+        mock = []
+        packets = 0
+        for i in range(random.randint(1, 10)):
+            packet = random.randint(10, 100)
+            mock.append({**random.choice(network.containers).model_dump(
+                exclude={'last_active', 'created_at', 'packets_number'}), 'packets_number': packet, "traffic": {}})
+            packets += packet
 
-        response = await redis.xread({"graph": last_id}, count=1, block=0)
-        _, messages = response[0]
-        last_id, payload = messages[0]
-        # payload = {
-        #     'id': container1.id,
-        #     'status': container1.status,
-        #     'count_packets': random.randint(10, 100),
-        #     'last_active': container1.last_active,
-
-        # }
-        await ws.send_json(payload)
+        # response = await redis.xread({"graph": last_id}, count=1, block=0)
+        # _, messages = response[0]
+        # last_id, payload = messages[0]
+        await ws.send_json({'network': {'id': network.id, 'packets': packets, 'containers': mock}})
 
 
 @r.get('', response_model=Graph)
