@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 from sqlmodel import select
 
 from ...auth import AuthAPIRouter
-from ...db import Cluster, ClusterHost, Host, Network
+from ...db import Host, HostToHost, Network
 from ...deps import Agent, Session
 from .scheme import NetworkCreate, NetworkRead, OverlayNetworkCreate
 
@@ -42,12 +42,12 @@ async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent)
     if len(overlay.peers) < 1:
         raise HTTPException(
             status_code=400, detail="At least 1 peers required")
-        
+
     available_peers = set(overlay.peers) - {agent.ip}
     if len(available_peers) == 0:
         raise HTTPException(
             status_code=400, detail="At least 1 peers required without this host")
-        
+
     stmt = (
         select(Network)
         .where(Network.network_id == overlay.network_id)
@@ -65,16 +65,16 @@ async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent)
             hosts.append(host)
 
         if len(hosts) >= 1:
-            cluster =  (await session.exec(select(ClusterHost).where(ClusterHost.host_id == hosts[0].id))).one_or_none()
-            if not cluster:
-                cluster = Cluster(name='Centrifuge')
-                cluster.hosts.extend(hosts)
-                session.add(cluster)
-            cluster.hosts.append(agent)
-
+            for host in hosts:
+                edge = (await session.exec(select(HostToHost).where(((HostToHost.source_host_id == host.id ) & (HostToHost.target_host_id == agent.id)) | ((HostToHost.target_host_id == host.id )& (HostToHost.source_host_id == agent.id))))).one_or_none()
+                if not edge:
+                    session.add(HostToHost(source_host_id=host.id, target_host_id=agent.id))
+                    
         network_db = Network(**overlay.model_dump(exclude={'peers'}))
         network_db.host = agent
         session.add(network_db)
+        
+    # TODO create logic for delete peers
 
     await session.commit()
     return network_db

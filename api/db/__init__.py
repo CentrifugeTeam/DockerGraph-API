@@ -1,3 +1,3 @@
 from sqlmodel import SQLModel  # noqa: F401
 
-from .host import Container, Host, Network, Cluster, ClusterHost, NetworkToNetwork
+from .host import Container, Host, HostToHost, Network, NetworkToNetwork

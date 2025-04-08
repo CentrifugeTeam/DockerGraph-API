@@ -8,10 +8,10 @@ from sqlmodel import Field, Relationship, SQLModel
 from .mixins import IDMixin
 
 
-class ClusterHost(SQLModel, table=True):
-    __tablename__ = 'cluster_host'
-    cluster_id: int = Field(foreign_key="clusters.id", primary_key=True)
-    host_id: UUID = Field(foreign_key="hosts.id", primary_key=True)
+class HostToHost(SQLModel, table=True):
+    __tablename__ = 'host_to_host'
+    source_host_id: UUID = Field(foreign_key="hosts.id", primary_key=True)
+    target_host_id: UUID = Field(foreign_key="hosts.id", primary_key=True)
 
 
 class NetworkToNetwork(SQLModel, table=True):
@@ -26,8 +26,6 @@ class Host(SQLModel, table=True):
     hostname: str
     ip: str
     token: str
-    clusters: list['Cluster'] = Relationship(
-        back_populates='hosts', link_model=ClusterHost)
     networks: list['Network'] = Relationship(
         back_populates='host')
 
@@ -59,10 +57,3 @@ class Container(IDMixin, SQLModel, table=True):
     network: Network = Relationship(back_populates="containers")
 
     __table_args__ = (UniqueConstraint('container_id', 'network_id'),)
-
-
-class Cluster(IDMixin, SQLModel, table=True):
-    __tablename__ = 'clusters'
-    name: str
-    hosts: list['Host'] = Relationship(
-        back_populates='clusters', link_model=ClusterHost)
