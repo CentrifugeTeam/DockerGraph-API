@@ -90,8 +90,7 @@ async def batch_create(batch: ContainersBatchCreate, session: Session, agent: Ag
     for network in batch.networks:
         network_db = (await session.exec(select(Network).where(Network.network_id == network.network_id).where(Network.host_id == agent.id))).one_or_none()
         if not network_db:
-            network_db = Network(
-                name=network.name, network_id=network.network_id, host_id=agent.id)
+            network_db = Network(**network.model_dump(), host_id=agent.id)
             session.add(network_db)
         network_lookup[network.network_id] = network_db
 
