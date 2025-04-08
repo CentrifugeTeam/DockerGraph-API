@@ -71,7 +71,7 @@ async def graph(session: Session, host_id: UUID | None = None, is_dead: bool | N
         stmt = select(Host).where(Host.id == host_id)
         if is_dead:
             stmt = stmt.join(Network, Network.host_id == Host.id).join(
-                Container, (Container.network_id == Network.id) & (Container.last_active < datetime.now(tz=timezone.utc) - timedelta(days=1)))
+                Container, Container.network_id == Network.id)
             nodes = (await session.exec(stmt.options(joinedload(Host.networks).subqueryload(Network.containers)))).unique().all()
             if nodes:
                 for net in nodes[0].networks:
@@ -85,7 +85,7 @@ async def graph(session: Session, host_id: UUID | None = None, is_dead: bool | N
     else:
         if is_dead:
             stmt = select(Host).join(Network, Network.host_id == Host.id).join(
-                Container, (Container.network_id == Network.id) & (Container.last_active < datetime.now(tz=timezone.utc) - timedelta(days=1)))
+                Container, Container.network_id == Network.id)
             nodes = (await session.exec(stmt.options(joinedload(Host.networks).subqueryload(Network.containers)))).unique().all()
             node_ids = []
             networks_ids = []
@@ -96,11 +96,10 @@ async def graph(session: Session, host_id: UUID | None = None, is_dead: bool | N
                         tz=timezone.utc) - timedelta(days=1)]
                     net.containers = containers
                     networks_ids.append(net.id)
-            # links = await session.exec(select(HostToHost).where((HostToHost.source_host_id.in_(node_ids)) & (HostToHost.target_host_id.in_(node_ids))))
-            # net_to_net = await session.exec(select(NetworkToNetwork).where(NetworkToNetwork.source_network_id.in_(networks_ids), NetworkToNetwork.target_network_id.in_(networks_ids)))
+            with session.no_autoflush:
+                links = await session.exec(select(HostToHost).where((HostToHost.source_host_id.in_(node_ids)) & (HostToHost.target_host_id.in_(node_ids))))
+                net_to_net = await session.exec(select(NetworkToNetwork).where(NetworkToNetwork.source_network_id.in_(networks_ids), NetworkToNetwork.target_network_id.in_(networks_ids)))
             # TODO mock for now
-            links = []
-            net_to_net = []
 
         else:
             nodes = (await session.exec(select(Host).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()

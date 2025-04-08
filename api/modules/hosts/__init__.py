@@ -14,7 +14,7 @@ from fastapi_sqlalchemy_toolkit import ModelManager
 
 manager = ModelManager(Host)
 
-r = APIRouter(prefix="/hosts")
+r = APIRouter(prefix="/hosts", tags=["Hosts"])
 
 
 class HostNetworksRead(HostRead):
