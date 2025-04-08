@@ -16,7 +16,8 @@ r = APIRouter(prefix='/json')
 def create_mindmap_from_networks(networks: list['Network']):
     data = []
     for network in networks:
-        data.append(network.model_dump(exclude={'host_id'}))
+        data.append({**network.model_dump(exclude={'host_id', "containers"}),
+                    'containers': [cont.model_dump(exclude={'network_id', 'last_active', 'created_at'}) for cont in network.containers]})
     return data
 
 
