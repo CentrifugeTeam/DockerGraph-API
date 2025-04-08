@@ -1,4 +1,5 @@
 from io import BytesIO
+from uuid import UUID
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -12,15 +13,17 @@ r = APIRouter(prefix='/png')
 
 
 @r.get('', response_class=StreamingResponse)
-async def png(session: Session):
-
-    nodes, edges = await graph_manager.get_graph(session)
+async def png(session: Session, id: UUID | None = None):
+    if id:
+        nodes, edges = await graph_manager.get_graph_by_id(session, id)
+    else:
+        nodes, edges = await graph_manager.get_graph(session)
     graph = nx.Graph()
     for node in nodes:
         graph.add_node(node)
         for net in node.networks:
             k = graph.subgraph()
-            
+
     graph.add_nodes_from(
         [node.id for node in nodes])
     graph.add_edges_from(

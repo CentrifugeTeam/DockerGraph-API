@@ -1,5 +1,6 @@
 import json
 from io import StringIO
+from uuid import UUID
 
 import networkx as nx
 from fastapi import APIRouter
@@ -20,9 +21,11 @@ def create_mindmap_from_networks(networks: list['Network']):
 
 
 @r.get('', response_class=StreamingResponse)
-async def plantuml(session: Session):
-
-    nodes, edges = await graph_manager.get_graph(session)
+async def plantuml(session: Session, id: UUID | None = None):
+    if id:
+        nodes, edges = await graph_manager.get_graph_by_id(session, id)
+    else:
+        nodes, edges = await graph_manager.get_graph(session)
     graph = nx.Graph()
     graph.add_nodes_from(
         [(node.id, {'name': node.hostname, "networks": node.networks}) for node in nodes])
