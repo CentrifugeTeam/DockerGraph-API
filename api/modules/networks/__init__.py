@@ -79,11 +79,11 @@ async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent)
         network_db.host = agent
         session.add(network_db)
         # TODO create logic for delete peers
-        # await session.commit()
-        # for host in hosts:
-        #     net_to_net = (await session.exec(select(NetworkToNetwork).where(((NetworkToNetwork.source_network_id == host.id) & (NetworkToNetwork.target_host_id == agent.id)) | ((NetworkToNetwork.target_host_id == host.id) & (NetworkToNetwork.source_host_id == agent.id))))).one_or_none()
-        #     if not net_to_net:
-        #         session.add(NetworkToNetwork(source_network_id=agent.id, target_network_id=host.id))
+        await session.commit()
+        for host in hosts:
+            net_to_net = (await session.exec(select(NetworkToNetwork).where(((NetworkToNetwork.source_network_id == host.id) & (NetworkToNetwork.target_host_id == agent.id)) | ((NetworkToNetwork.target_host_id == host.id) & (NetworkToNetwork.source_host_id == agent.id))))).one_or_none()
+            if not net_to_net:
+                session.add(NetworkToNetwork(source_network_id=agent.id, target_network_id=host.id))
         await session.commit()
     return network_db
 

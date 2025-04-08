@@ -4,11 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from fastapi_sqlalchemy_toolkit import ModelManager, make_partial_model
 from pydantic import BaseModel
+from sqlalchemy.orm import joinedload
 from sqlmodel import delete, select
 
 from ..auth import AuthAPIRouter
 from ..db import Container, Network
-from ..deps import Agent, Session
+from ..deps import Agent, RedisSession, Session
 from .networks.scheme import NetworkCreate, NetworkRead
 
 
@@ -141,6 +142,13 @@ async def containers(containers: list[ContainerCreate], session: Session, agent:
     await session.commit()
 
     return
+
+
+@pub.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
+async def container(id: int, session: Session, redis: RedisSession):
+    """Убирание отслеживания контейнера на основе container_id"""
+    container = await manager.get_or_404(session, id=id, options=(joinedload(Container.network)))
+    await redis.lpush(str(container.network.host_id), container.container_id)
 
 
 r = APIRouter()
