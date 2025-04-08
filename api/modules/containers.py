@@ -18,7 +18,7 @@ class ContainerBase(BaseModel):
     container_id: str
     display_name: str | None = None
     status: str
-    packets_number: int | None = None
+    packets_number: int = 0
     ip: str
     created_at: datetime
     last_active: datetime | None

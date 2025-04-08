@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from sqlmodel import select
 
 from ...auth import AuthAPIRouter
-from ...db import Host, HostToHost, Network
+from ...db import Host, HostToHost, Network, NetworkToNetwork
 from ...deps import Agent, Session
 from .scheme import NetworkCreate, NetworkRead, NetworkUpdate, OverlayNetworkCreate
 
@@ -78,10 +78,13 @@ async def overlay(overlay: OverlayNetworkCreate, session: Session, agent: Agent)
         network_db = Network(**overlay.model_dump(exclude={'peers'}))
         network_db.host = agent
         session.add(network_db)
-
-    # TODO create logic for delete peers
-
-    await session.commit()
+        # TODO create logic for delete peers
+        # await session.commit()
+        # for host in hosts:
+        #     net_to_net = (await session.exec(select(NetworkToNetwork).where(((NetworkToNetwork.source_network_id == host.id) & (NetworkToNetwork.target_host_id == agent.id)) | ((NetworkToNetwork.target_host_id == host.id) & (NetworkToNetwork.source_host_id == agent.id))))).one_or_none()
+        #     if not net_to_net:
+        #         session.add(NetworkToNetwork(source_network_id=agent.id, target_network_id=host.id))
+        await session.commit()
     return network_db
 
 

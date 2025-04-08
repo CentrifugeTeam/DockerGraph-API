@@ -1,12 +1,11 @@
 from pydantic import BaseModel
-from fastapi_sqlalchemy_toolkit import make_partial_model
 
 
 class NetworkCreate(BaseModel):
     name: str
     network_id: str
     display_name: str | None = None
-    packets_number: int 
+    packets_number: int = 0
 
 
 class NetworkRead(NetworkCreate):
