@@ -6,6 +6,7 @@ class NetworkCreate(BaseModel):
     name: str
     network_id: str
     display_name: str | None = None
+    packets_number: int 
 
 
 class NetworkRead(NetworkCreate):

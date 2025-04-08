@@ -38,7 +38,7 @@ class Network(IDMixin, SQLModel, table=True):
     network_id: str
     host_id: UUID = Field(foreign_key="hosts.id")
     containers: list['Container'] = Relationship(back_populates='network')
-
+    packets_number: int = 0
     host: 'Host' = Relationship(back_populates='networks')
     __table_args__ = (UniqueConstraint('network_id', 'host_id'),)
 
