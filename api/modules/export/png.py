@@ -13,11 +13,8 @@ r = APIRouter(prefix='/png')
 
 
 @r.get('', response_class=StreamingResponse)
-async def png(session: Session, id: UUID | None = None):
-    if id:
-        nodes, edges = await graph_manager.get_graph_by_id(session, id)
-    else:
-        nodes, edges = await graph_manager.get_graph(session)
+async def png(session: Session, host_id: UUID | None = None, is_dead: bool | None = None):
+    nodes, edges, net_to_net = await graph_manager.get_full_graph(session, host_id, is_dead)
     G = nx.Graph()
     labels = {}
     for node in nodes:

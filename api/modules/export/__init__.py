@@ -24,11 +24,8 @@ def create_mindmap_from_networks(buffer: StringIO, networks: list[Network], star
 
 
 @r.get('/plantuml', response_class=StreamingResponse)
-async def plantuml(session: Session, id: UUID | None = None):
-    if id:
-        nodes, edges = await graph_manager.get_graph_by_id(session, id)
-    else:
-        nodes, edges = await graph_manager.get_graph(session)
+async def plantuml(session: Session, host_id: UUID | None = None, is_dead: bool | None = None):
+    nodes, edges, net_to_net = await graph_manager.get_full_graph(session, host_id, is_dead)
     graph = nx.Graph()
     graph.add_nodes_from(
         [(node.id, {'name': node.hostname, "networks": node.networks}) for node in nodes])
