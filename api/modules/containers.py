@@ -13,13 +13,9 @@ from ..deps import Agent, RedisSession, Session
 from .networks.scheme import NetworkCreate, NetworkRead
 
 
-class RxTx(BaseModel):
-    id: int | str
-    is_container: bool
-
 class TrafficRead(BaseModel):
-    tx: RxTx
-    rx: RxTx
+    destination: str
+    source: str
 
 class ContainerBase(BaseModel):
     name: str
@@ -30,7 +26,7 @@ class ContainerBase(BaseModel):
     packets_number: int = 0
     ip: str
     created_at: datetime
-    traffic: TrafficRead | None = None
+    traffic: list[TrafficRead] | None = None
     last_active: datetime | None
 
 

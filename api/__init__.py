@@ -1,12 +1,23 @@
 import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from contextlib import asynccontextmanager
+
 from .modules import auth, containers, export, graph, hosts, networks
+from .worker import agent
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # task = asyncio.create_task(agent())
+    # app.task = task
+    yield
+    # task.cancel()
+
+app = FastAPI(lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,
