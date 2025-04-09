@@ -62,6 +62,7 @@ class Container(IDMixin, SQLModel, table=True):
     network_id: int = Field(foreign_key="networks.id")
     network: Network = Relationship(back_populates="containers")
     packets_number: int = 0
+    traffic: dict | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
     __table_args__ = (UniqueConstraint('container_id', 'network_id'),)
 
