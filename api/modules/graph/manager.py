@@ -56,7 +56,6 @@ class GraphManager:
                 nodes = (await session.exec(select(Host).options(joinedload(Host.networks).subqueryload(Network.containers)))).unique()
                 links = (await session.exec(select(HostToHost)))
                 net_to_net = await session.exec(select(NetworkToNetwork))
-                
         return nodes, links, net_to_net
 
 
